@@ -14,6 +14,9 @@ import org.apache.http.impl.client.DefaultHttpClient;
 
 public class ArgCheck 
 {
+	private static final String PUSHOVER_APP_TOKEN = "";
+	private static final String PUSHOVER_USER_TOKEN = "";
+	
 	private class StockWrapper
 	{
 		STOCK_STATUS _status;
@@ -51,8 +54,7 @@ public class ArgCheck
 		KN_BUNDLE("KN Bundle", 1473825),
 		PS4_SOLUS("PS4 Solus", 1222540),
 		FIFA_BUNDLE("Fifa Bundle", 1578641),
-		//AC_BUNDLE("AC Bundle", 1451483),
-		AC_BUNDLE("AC Bundle", 1388075),
+		AC_BUNDLE("AC Bundle", 1451483),
 		KZ_MEGABUNDLE("KZ Megabundle", 1450312);
 		
 		private int _code;
@@ -107,13 +109,14 @@ public class ArgCheck
 	public static void main(String[] args) {
 		ArgCheck ac = new ArgCheck();
 		ac.start01();
-		//ac.parseQuantity("in stock: 5 +");
-		//ac.start02();
 	}
 	
 	private void start01()
 	{
-		checkPS4Status(PS4.AC_BUNDLE);		
+		for (PS4 p : PS4.values()) 
+		{
+			checkPS4Status(p);		
+		}
 	}
 
 	private void checkPS4Status(PS4 ps4)
@@ -124,11 +127,15 @@ public class ArgCheck
 			if (response != null)
 			{
 				StockWrapper sw = parseResponse(response);
-				switch (sw._status)
+				if (sw != null)
 				{
-				case IN_STOCK:
-					sendNotification(s, ps4, sw._quantity);
-					break;
+					System.out.println(">>> Store: " + s.getName() + ", Item: " + ps4.getName() + " ["+ps4.getCode()+"], Status: " + sw._status.getStatus());
+					switch (sw._status)
+					{
+					case IN_STOCK:
+						sendNotification(s, ps4, sw._quantity);
+						break;
+					}
 				}
 			}
 		}
@@ -136,10 +143,9 @@ public class ArgCheck
 	
 	private void sendNotification(STORE s, PS4 ps4, int quantity) 
 	{
-		Pushover p = new Pushover("", 
-				"");
+		Pushover p = new Pushover(PUSHOVER_APP_TOKEN, PUSHOVER_USER_TOKEN);
 		StringBuilder sb = new StringBuilder();
-		sb.append(ps4.getName()).append(" Is In Stock! Store: ").append(s.getName());
+		sb.append(ps4.getCode()).append(" In Stock! Store: ").append(s.getName());
 		sb.append(", Quantity: ").append(quantity);
 		
 		System.out.println("\nArgCheck.sendNotification() :: Sending Notification! Details:");
@@ -200,38 +206,6 @@ public class ArgCheck
 		return 0;
 	}
 
-	private void start02()
-	{
-		try {
-			HttpClient client = new DefaultHttpClient();
-			HttpGet request = new HttpGet("http://checkargos.com/StockCheckBackground.php?NI=false&productId=1447947&storeId=4113");
-			HttpResponse response = client.execute(request);
-			
-			// Get the response
-			BufferedReader rd = new BufferedReader(new InputStreamReader(
-					response.getEntity().getContent()));
-
-			StringBuffer textView = new StringBuffer();
-			String line = "";
-			while ((line = rd.readLine()) != null) {
-				textView.append(line);
-			}
-			
-			System.out.println("===========");
-			System.out.println(textView.toString());
-			System.out.println("===========");
-		} catch (ClientProtocolException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IllegalStateException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}
-	
 	private HttpResponse getStockCheckResponse(STORE store, PS4 ps4)
 	{
 		HttpResponse response = null;
