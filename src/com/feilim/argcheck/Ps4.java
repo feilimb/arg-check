@@ -1,6 +1,6 @@
 package com.feilim.argcheck;
 
-public enum PS4 
+public enum Ps4 
 {
 	KZ_BUNDLE("KZ Bundle", 1447947),
 	KN_BUNDLE("KN Bundle", 1473825),
@@ -12,7 +12,7 @@ public enum PS4
 	private int _code;
 	private String _name;
 	
-	private PS4(String name, int code) 
+	private Ps4(String name, int code) 
 	{
 		_name = name;
 		_code = code;

@@ -48,21 +48,21 @@ public class ArgCheck
 	
 	private void checkAllStores()
 	{
-		for (STORE s : STORE.values()) 
+		for (Store s : Store.values()) 
 		{
 			checkAllPS4s(s);
 		}
 	}
 
-	private void checkAllPS4s(STORE s)
+	private void checkAllPS4s(Store s)
 	{
-		for (PS4 ps4 : PS4.values())
+		for (Ps4 ps4 : Ps4.values())
 		{
 			checkPS4Status(s, ps4);		
 		}
 	}
 
-	private void checkPS4Status(STORE s, PS4 ps4) 
+	private void checkPS4Status(Store s, Ps4 ps4) 
 	{
 		HttpResponse response = getStockCheckResponse(s, ps4);
 		if (response != null)
@@ -82,7 +82,7 @@ public class ArgCheck
 		}
 	}
 
-	private void sendNotification(STORE s, PS4 ps4, int quantity) 
+	private void sendNotification(Store s, Ps4 ps4, int quantity) 
 	{
 		if (_pushoverAppToken == null || _pushoverAppToken.isEmpty() || 
 				_pushoverUserToken == null || _pushoverUserToken.isEmpty())
@@ -128,17 +128,17 @@ public class ArgCheck
 		String status = parsedStatus.toString().toLowerCase();
 		if (!status.isEmpty())
 		{
-			if (status.contains(STOCK_STATUS.IN_STOCK.getStatus()))
+			if (status.contains(StockStatus.IN_STOCK.getStatus()))
 			{
-				return new StockWrapper(STOCK_STATUS.IN_STOCK, parseQuantity(status));
+				return new StockWrapper(StockStatus.IN_STOCK, parseQuantity(status));
 			}
-			else if (status.contains(STOCK_STATUS.OUT_OF_STOCK.getStatus()))
+			else if (status.contains(StockStatus.OUT_OF_STOCK.getStatus()))
 			{
-				return new StockWrapper(STOCK_STATUS.OUT_OF_STOCK, 0);
+				return new StockWrapper(StockStatus.OUT_OF_STOCK, 0);
 			}
-			else if (status.contains(STOCK_STATUS.UNKNOWN_STATUS.getStatus()))
+			else if (status.contains(StockStatus.UNKNOWN_STATUS.getStatus()))
 			{
-				return new StockWrapper(STOCK_STATUS.UNKNOWN_STATUS, 0);
+				return new StockWrapper(StockStatus.UNKNOWN_STATUS, 0);
 			}
 		}
 		
@@ -158,7 +158,7 @@ public class ArgCheck
 		return 0;
 	}
 
-	private HttpResponse getStockCheckResponse(STORE store, PS4 ps4)
+	private HttpResponse getStockCheckResponse(Store store, Ps4 ps4)
 	{
 		HttpResponse response = null;
 		try {

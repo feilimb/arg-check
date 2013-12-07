@@ -1,6 +1,6 @@
 package com.feilim.argcheck;
 
-public enum STOCK_STATUS 
+public enum StockStatus 
 {
 	IN_STOCK("in stock"),
 	OUT_OF_STOCK("out of stock"),
@@ -8,7 +8,7 @@ public enum STOCK_STATUS
 	
 	private String _status;
 	
-	private STOCK_STATUS(String status) 
+	private StockStatus(String status) 
 	{
 		_status = status;
 	}

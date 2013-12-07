@@ -1,13 +1,13 @@
 package com.feilim.argcheck;
 
-import com.feilim.argcheck.STOCK_STATUS;
+import com.feilim.argcheck.StockStatus;
 
 public class StockWrapper 
 {
-	STOCK_STATUS _status;
+	StockStatus _status;
 	int _quantity;
 	
-	public StockWrapper(STOCK_STATUS status, int quantity) 
+	public StockWrapper(StockStatus status, int quantity) 
 	{
 		_status = status;
 		_quantity = quantity;

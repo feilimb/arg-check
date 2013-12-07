@@ -1,6 +1,6 @@
 package com.feilim.argcheck;
 
-public enum STORE 
+public enum Store 
 {
 	CORK_MAHON("Cork Mahon Point", 4113), 
 	CORK_QUEENS_CASTLE("Cork Queens Castle", 45), 
@@ -9,7 +9,7 @@ public enum STORE
 	private int _code;
 	private String _name;
 	
-	private STORE(String name, int code)
+	private Store(String name, int code)
 	{
 		_name = name;
 		_code = code;
