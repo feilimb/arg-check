@@ -25,7 +25,10 @@ public class ArgCheck
 	public static void main(String[] args) {
 		ArgCheck ac = new ArgCheck();
 		ac.initialise();
-		ac.checkAllStores();
+		while (true)
+		{
+			ac.checkAllStores();
+		}
 	}
 	
 	private void initialise() 
