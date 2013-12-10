@@ -26,6 +26,8 @@ public class ArgCheck
 	private static final String OUT_OF_STOCK_KEY = "outOfStock";
 	public static Timer MAIN_TIMER;
 	
+	private static final boolean AUTO_LAUNCH_BROWSER = true;
+	
 	/**
 	 * @param args
 	 */
@@ -33,18 +35,18 @@ public class ArgCheck
 	{
 		ArgCheck ac = new ArgCheck();
 		ac.initialise();
-		//ac.runIndefinitely();
-		ReservationRobot robot = new ReservationRobot("1024353", Store.CORK_MAHON);
-		MAIN_TIMER.schedule(robot, 100);
-		
-		try 
-		{
-			Thread.sleep(60000);
-		} 
-		catch (InterruptedException e) 
-		{
-			e.printStackTrace();
-		}
+		ac.runIndefinitely();
+//		ReservationRobot robot = new ReservationRobot("1024353", Store.CORK_MAHON);
+//		MAIN_TIMER.schedule(robot, 100);
+//		
+//		try 
+//		{
+//			Thread.sleep(60000);
+//		} 
+//		catch (InterruptedException e) 
+//		{
+//			e.printStackTrace();
+//		}
 	}
 	
 	public ArgCheck() 
@@ -76,7 +78,7 @@ public class ArgCheck
 		while (true)
 		{
 			long t = System.currentTimeMillis();
-			checkAllStores();
+			checkAllPS4s();
 			while (_lock != 0)
 			{
 				try {
@@ -88,29 +90,29 @@ public class ArgCheck
 		}
 	}
 	
-	private void checkAllStores()
+	private void checkAllPS4s()
 	{
-		_lock = Store.values().length;
-		for (final Store s : Store.values()) 
+		_lock = Ps4.values().length;
+		for (final Ps4 p : Ps4.values()) 
 		{
-			TimerTask task = new MyTimerTask(s);
+			TimerTask task = new StockCheckTask(p);
 			MAIN_TIMER.schedule(task, 0);
 		}
 	}
 
-	private class MyTimerTask extends TimerTask
+	private class StockCheckTask extends TimerTask
 	{
-		final Store _store;
+		final Ps4 _ps4;
 		
-		public MyTimerTask(Store s) 
+		public StockCheckTask(Ps4 p) 
 		{
-			_store = s;
+			_ps4 = p;
 		}
 		
 		@Override
 		public void run() 
 		{
-			checkAllPS4s(_store);
+			checkAllStores(_ps4);
 			decrementLock();
 		}
 	}
@@ -120,11 +122,11 @@ public class ArgCheck
 		_lock--;
 	}
 	
-	private void checkAllPS4s(Store s)
+	private void checkAllStores(Ps4 p)
 	{
-		for (Ps4 ps4 : Ps4.values())
+		for (Store s : Store.values())
 		{
-			checkPS4Status(s, ps4);		
+			checkPS4Status(s, p);		
 		}
 	}
 
@@ -142,6 +144,10 @@ public class ArgCheck
 				{
 				case IN_STOCK:
 					sendNotification(s, ps4, sw._quantity);
+					if (AUTO_LAUNCH_BROWSER)
+					{
+						ReservationRobot.openBrowser(Integer.toString(ps4.getCode()), 0);
+					}
 					break;
 				}
 			}

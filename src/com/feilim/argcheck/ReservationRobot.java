@@ -39,8 +39,7 @@ public class ReservationRobot extends TimerTask
 	{
 		try 
 		{
-			String url01 = URL_01_TEMPLATE.replaceFirst("PRODUCT_ID", _productId);
-			openBrowser(url01, 7000);
+			openBrowser(_productId, 7000);
 			performClick(600, 450);
 			_robot.delay(7000);
 			performClick(1050, 460);
@@ -90,9 +89,10 @@ public class ReservationRobot extends TimerTask
 		_robot.keyPress(KeyEvent.VK_ENTER);
 	}
 
-	private void openBrowser(String url, long pauseTime)
+	public static void openBrowser(String productId, long pauseTime)
 	{
-		try 
+		String url = URL_01_TEMPLATE.replaceFirst("PRODUCT_ID", productId);
+		try
 		{
 			Desktop.getDesktop().browse(java.net.URI.create(url));
 			Thread.sleep(pauseTime);
