@@ -4,7 +4,11 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.regex.Matcher;
@@ -21,6 +25,7 @@ public class ArgCheck
 	private String _pushoverAppToken;
 	private String _pushoverUserToken;
 	private int _lock;
+	private Map<String, StockStatus> _stockStatusMap;
 	private static final String STOCK_URL_TEMPLATE = "http://www.argos.ie/webapp/wcs/stores/servlet/ISALTMStockAvailability?storeId=10152&langId=111&partNumber_1=PRODUCT_ID&checkStock=true&backTo=product&storeSelection=STORE_ID&viewTaskName=ISALTMAjaxResponseView";
 	private static final String IN_STOCK_KEY = "inStock";
 	private static final String OUT_OF_STOCK_KEY = "outOfStock";
@@ -36,17 +41,6 @@ public class ArgCheck
 		ArgCheck ac = new ArgCheck();
 		ac.initialise();
 		ac.runIndefinitely();
-//		ReservationRobot robot = new ReservationRobot("1024353", Store.CORK_MAHON);
-//		MAIN_TIMER.schedule(robot, 100);
-//		
-//		try 
-//		{
-//			Thread.sleep(60000);
-//		} 
-//		catch (InterruptedException e) 
-//		{
-//			e.printStackTrace();
-//		}
 	}
 	
 	public ArgCheck() 
@@ -70,6 +64,8 @@ public class ArgCheck
 		{
 			ex.printStackTrace();
 		}
+		
+		_stockStatusMap = new HashMap<String, StockStatus>();
 	}
 	
 	private void runIndefinitely()
@@ -140,13 +136,26 @@ public class ArgCheck
 			{
 				System.out.println(">>> Store: " + s.getName() + ", Item: " 
 						+ ps4.getName() + " ["+ps4.getCode()+"], Status: " + sw._status.getStatus());
+				
+				String key = getUniqueStockStatusKey(s, ps4);
+				StockStatus cachedStatus = getFromStatusMap(key);
 				switch (sw._status)
 				{
 				case IN_STOCK:
-					sendNotification(s, ps4, sw._quantity);
-					if (AUTO_LAUNCH_BROWSER)
+					if (cachedStatus == null || cachedStatus != StockStatus.IN_STOCK)
 					{
-						ReservationRobot.openBrowser(Integer.toString(ps4.getCode()), 0);
+						updateStatusMap(key, sw._status);
+						sendNotification(s, ps4, sw._quantity);
+						if (AUTO_LAUNCH_BROWSER)
+						{
+							ReservationRobot.openBrowser(Integer.toString(ps4.getCode()), 0);
+						}
+					}
+					break;
+				case OUT_OF_STOCK:
+					if (cachedStatus == null || cachedStatus != StockStatus.OUT_OF_STOCK)
+					{
+						updateStatusMap(key, sw._status);
 					}
 					break;
 				}
@@ -154,6 +163,21 @@ public class ArgCheck
 		}
 	}
 
+	private synchronized void updateStatusMap(String key, StockStatus status)
+	{
+		_stockStatusMap.put(key, status);
+	}
+
+	private synchronized StockStatus getFromStatusMap(String key)
+	{
+		return _stockStatusMap.get(key);
+	}
+	
+	private String getUniqueStockStatusKey(Store s, Ps4 p)
+	{
+		return s.getCode() + "_" + p.getCode();
+	}
+	
 	private void sendNotification(Store s, Ps4 ps4, int quantity) 
 	{
 		if (_pushoverAppToken == null || _pushoverAppToken.isEmpty() || 
