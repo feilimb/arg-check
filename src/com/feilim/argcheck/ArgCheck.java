@@ -92,7 +92,9 @@ public class ArgCheck
 		for (final Ps4 p : Ps4.values()) 
 		{
 			TimerTask task = new StockCheckTask(p);
-			MAIN_TIMER.schedule(task, 0);
+			//MAIN_TIMER.schedule(task, 0);
+			Timer t = new Timer();
+			t.schedule(task, 0);
 		}
 	}
 
