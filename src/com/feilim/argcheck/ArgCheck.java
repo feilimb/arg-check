@@ -4,13 +4,16 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
-import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
+import java.util.logging.FileHandler;
+import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -32,7 +35,10 @@ public class ArgCheck
 	public static Timer MAIN_TIMER;
 	
 	private static final boolean AUTO_LAUNCH_BROWSER = true;
-	
+	private static final String URL_01_TEMPLATE = "http://www.argos.ie/webapp/wcs/stores/servlet/Search?storeId=10152&catalogId=14551&langId=111&searchTerms=PRODUCT_ID&authToken=%252d1002%252c8RvTgzRQUIkiaCQg1wd0wg264Io%253d";
+
+	private Logger _logger = Logger.getLogger("ArgCheck");  
+    private FileHandler _fh;  
 	/**
 	 * @param args
 	 */
@@ -43,13 +49,10 @@ public class ArgCheck
 		ac.runIndefinitely();
 	}
 	
-	public ArgCheck() 
-	{
-		MAIN_TIMER = new Timer();
-	}
-	
 	private void initialise() 
 	{
+		MAIN_TIMER = new Timer();
+		
 		Properties prop = new Properties();
 		try 
 		{
@@ -66,20 +69,42 @@ public class ArgCheck
 		}
 		
 		_stockStatusMap = new HashMap<String, StockStatus>();
+		
+        try 
+        {
+        	SimpleDateFormat sim=new SimpleDateFormat("ddMMyyyy_HHmm");
+        	Date d = new Date();
+        	String s = sim.format(d);
+			_fh = new FileHandler("log/" + s + ".log");  
+			_logger.addHandler(_fh);
+			SimpleFormatter formatter = new SimpleFormatter();  
+			_fh.setFormatter(formatter);
+		}
+        catch (SecurityException e)
+        {
+			e.printStackTrace();
+		} 
+        catch (IOException e) 
+        {
+			e.printStackTrace();
+		}  
 	}
 	
 	private void runIndefinitely()
 	{
 		_lock = 0;
+		_logger.info("AC :: Starting Stock Check...");
 		while (true)
 		{
 			long t = System.currentTimeMillis();
 			checkAllPS4s();
 			while (_lock != 0)
 			{
-				try {
-					Thread.sleep(200);
-				} catch (InterruptedException e) {}
+				try 
+				{
+					Thread.sleep(100);
+				} 
+				catch (InterruptedException e) {}
 			}
 			long t1 = System.currentTimeMillis();
 			System.out.println("\n\nTime to check all: " + (t1-t) + " ms.");
@@ -92,7 +117,6 @@ public class ArgCheck
 		for (final Ps4 p : Ps4.values()) 
 		{
 			TimerTask task = new StockCheckTask(p);
-			//MAIN_TIMER.schedule(task, 0);
 			Timer t = new Timer();
 			t.schedule(task, 0);
 		}
@@ -147,8 +171,9 @@ public class ArgCheck
 					if (cachedStatus == null || cachedStatus != StockStatus.IN_STOCK)
 					{
 						updateStatusMap(key, sw._status);
-						sendNotification(s, ps4, sw._quantity);
-						if (AUTO_LAUNCH_BROWSER)
+						sendNotification(s, ps4, sw);
+						if (AUTO_LAUNCH_BROWSER && 
+								(s==Store.Cork_Mahon||s==Store.Cork_Queens||s==Store.Cork_Retail))
 						{
 							ReservationRobot.openBrowser(Integer.toString(ps4.getCode()), 0);
 						}
@@ -157,6 +182,10 @@ public class ArgCheck
 				case OUT_OF_STOCK:
 					if (cachedStatus == null || cachedStatus != StockStatus.OUT_OF_STOCK)
 					{
+						if (cachedStatus == StockStatus.IN_STOCK)
+						{
+							sendNotification(s, ps4, sw);
+						}
 						updateStatusMap(key, sw._status);
 					}
 					break;
@@ -180,7 +209,7 @@ public class ArgCheck
 		return s.getCode() + "_" + p.getCode();
 	}
 	
-	private void sendNotification(Store s, Ps4 ps4, int quantity) 
+	private void sendNotification(Store s, Ps4 ps4, StockWrapper sw) 
 	{
 		if (_pushoverAppToken == null || _pushoverAppToken.isEmpty() || 
 				_pushoverUserToken == null || _pushoverUserToken.isEmpty())
@@ -191,9 +220,18 @@ public class ArgCheck
 		}
 		
 		Pushover p = new Pushover(_pushoverAppToken, _pushoverUserToken);
+		
 		StringBuilder sb = new StringBuilder();
-		sb.append(ps4.getName()).append(" (").append(ps4.getCode()).append(") In Stock! Store: ").append(s.getName());
-		sb.append(", Quantity: ").append(quantity);
+		sb.append(ps4.getName()).append(" (").append(ps4.getCode()).append(") Status: "); 
+		sb.append(sw._status.getStatus()).append(". Store: ").append(s.getName()).append("(");
+		sb.append(s.getCode()).append(")");
+		sb.append(", Quantity: ").append(sw._quantity);
+		
+		// record this in stock change to log file on disk
+		_logger.info(sb.toString());
+		
+		String url = URL_01_TEMPLATE.replaceFirst("PRODUCT_ID", ""+ps4.getCode());
+		sb.append("\n").append(url);
 		
 		System.out.println("\nArgCheck.sendNotification() :: Sending Notification! Details:");
 		System.out.println(sb.toString());
