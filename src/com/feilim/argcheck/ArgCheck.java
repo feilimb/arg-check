@@ -1,6 +1,7 @@
 package com.feilim.argcheck;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -17,6 +18,14 @@ import java.util.logging.SimpleFormatter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
+import javax.sound.sampled.DataLine;
+import javax.sound.sampled.LineUnavailableException;
+import javax.sound.sampled.SourceDataLine;
+
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
@@ -27,7 +36,7 @@ public class ArgCheck
 {
 	private String _pushoverAppToken;
 	private String _pushoverUserToken;
-	private int _lock;
+	//private int _lock;
 	private Map<String, StockStatus> _stockStatusMap;
 	private static final String STOCK_URL_TEMPLATE = "http://www.argos.ie/webapp/wcs/stores/servlet/ISALTMStockAvailability?storeId=10152&langId=111&partNumber_1=PRODUCT_ID&checkStock=true&backTo=product&storeSelection=STORE_ID&viewTaskName=ISALTMAjaxResponseView";
 	private static final String IN_STOCK_KEY = "inStock";
@@ -47,6 +56,16 @@ public class ArgCheck
 		ArgCheck ac = new ArgCheck();
 		ac.initialise();
 		ac.runIndefinitely();
+//		ac.playSound(StockStatus.IN_STOCK);
+//		try {
+//			Thread.sleep(5000);
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
+		//ReservationRobot rr = new ReservationRobot(""+1024353, Store.Cork_Queens, "feilimb");
+		//Timer t = new Timer();
+		//t.schedule(rr, 100);
 	}
 	
 	private void initialise() 
@@ -92,33 +111,19 @@ public class ArgCheck
 	
 	private void runIndefinitely()
 	{
-		_lock = 0;
+		//_lock = 0;
 		_logger.info("AC :: Starting Stock Check...");
-		while (true)
-		{
-			long t = System.currentTimeMillis();
-			checkAllPS4s();
-			while (_lock != 0)
-			{
-				try 
-				{
-					Thread.sleep(100);
-				} 
-				catch (InterruptedException e) {}
-			}
-			long t1 = System.currentTimeMillis();
-			System.out.println("\n\nTime to check all: " + (t1-t) + " ms.");
-		}
+		checkAllPS4s();
 	}
 	
 	private void checkAllPS4s()
 	{
-		_lock = Ps4.values().length;
+		//_lock = Ps4.values().length;
 		for (final Ps4 p : Ps4.values()) 
 		{
 			TimerTask task = new StockCheckTask(p);
 			Timer t = new Timer();
-			t.schedule(task, 0);
+			t.schedule(task, 0, 8000);
 		}
 	}
 
@@ -135,14 +140,14 @@ public class ArgCheck
 		public void run() 
 		{
 			checkAllStores(_ps4);
-			decrementLock();
+			//decrementLock();
 		}
 	}
 	
-	private synchronized void decrementLock()
-	{
-		_lock--;
-	}
+//	private synchronized void decrementLock()
+//	{
+//		_lock--;
+//	}
 	
 	private void checkAllStores(Ps4 p)
 	{
@@ -171,6 +176,7 @@ public class ArgCheck
 					if (cachedStatus == null || cachedStatus != StockStatus.IN_STOCK)
 					{
 						updateStatusMap(key, sw._status);
+						playSound(sw._status);
 						sendNotification(s, ps4, sw);
 						if (AUTO_LAUNCH_BROWSER && 
 								(s==Store.Cork_Mahon||s==Store.Cork_Queens||s==Store.Cork_Retail))
@@ -193,6 +199,65 @@ public class ArgCheck
 			}
 		}
 	}
+
+	private void playSound(StockStatus _status) {
+		if (_status == StockStatus.IN_STOCK)
+		{
+			playSound("tada.wav");
+		}
+	}
+	
+	public void playSound(String filename){
+
+        String strFilename = filename;
+        File soundFile = null;
+        AudioInputStream audioStream = null;
+        try {
+            soundFile = new File(strFilename);
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+
+        try {
+            audioStream = AudioSystem.getAudioInputStream(soundFile);
+        } catch (Exception e){
+            e.printStackTrace();
+            System.exit(1);
+        }
+
+        AudioFormat audioFormat = audioStream.getFormat();
+
+        SourceDataLine sourceLine = null;
+        DataLine.Info info = new DataLine.Info(SourceDataLine.class, audioFormat);
+        try {
+            sourceLine = (SourceDataLine) AudioSystem.getLine(info);
+            sourceLine.open(audioFormat);
+        } catch (LineUnavailableException e) {
+            e.printStackTrace();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        sourceLine.start();
+
+        int nBytesRead = 0;
+        byte[] abData = new byte[1024];
+        while (nBytesRead != -1) {
+            try {
+                nBytesRead = audioStream.read(abData, 0, abData.length);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            if (nBytesRead >= 0) {
+                @SuppressWarnings("unused")
+                int nBytesWritten = sourceLine.write(abData, 0, nBytesRead);
+            }
+        }
+
+        sourceLine.drain();
+        sourceLine.close();
+    }
 
 	private synchronized void updateStatusMap(String key, StockStatus status)
 	{
