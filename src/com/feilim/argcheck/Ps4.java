@@ -4,8 +4,8 @@ public enum Ps4
 {
 	KZ_BUNDLE("KZ Bundle", 1447947),
 	KN_BUNDLE("KN Bundle", 1473825),
-	//PS4_SOLUS("PS4 Solus", 1222540),
-	//FIFA_BUNDLE("Fifa Bundle", 1578641),
+	PS4_SOLUS("PS4 Solus", 1222540),
+	FIFA_BUNDLE("Fifa Bundle", 1578641),
 	AC_BUNDLE("AC Bundle", 1451483),
 	KZ_MEGABUNDLE("KZ Megabundle", 1450312);
 	
@@ -23,7 +23,22 @@ public enum Ps4
 		return _code;
 	}
 	
-	public String getName() {
+	public String getName() 
+	{
 		return _name;
+	}
+	
+	public static Ps4 getFromCode(int code)
+	{
+		Ps4[] all = values();
+		for (Ps4 p : all) 
+		{
+			if (p.getCode() == code)
+			{
+				return p;
+			}
+		}
+		
+		return null;
 	}
 }

@@ -6,10 +6,13 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.FileHandler;
@@ -21,7 +24,6 @@ import java.util.regex.Pattern;
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioInputStream;
 import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.Clip;
 import javax.sound.sampled.DataLine;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
@@ -36,18 +38,35 @@ public class ArgCheck
 {
 	private String _pushoverAppToken;
 	private String _pushoverUserToken;
-	//private int _lock;
-	private Map<String, StockStatus> _stockStatusMap;
-	private static final String STOCK_URL_TEMPLATE = "http://www.argos.ie/webapp/wcs/stores/servlet/ISALTMStockAvailability?storeId=10152&langId=111&partNumber_1=PRODUCT_ID&checkStock=true&backTo=product&storeSelection=STORE_ID&viewTaskName=ISALTMAjaxResponseView";
-	private static final String IN_STOCK_KEY = "inStock";
-	private static final String OUT_OF_STOCK_KEY = "outOfStock";
-	public static Timer MAIN_TIMER;
-	
-	private static final boolean AUTO_LAUNCH_BROWSER = true;
-	private static final String URL_01_TEMPLATE = "http://www.argos.ie/webapp/wcs/stores/servlet/Search?storeId=10152&catalogId=14551&langId=111&searchTerms=PRODUCT_ID&authToken=%252d1002%252c8RvTgzRQUIkiaCQg1wd0wg264Io%253d";
 
-	private Logger _logger = Logger.getLogger("ArgCheck");  
-    private FileHandler _fh;  
+	private Map<String, StockStatus> _stockStatusMap;
+	
+	private static final String STOCK_URL_TEMPLATE = 
+			"http://www.argos.ie/webapp/wcs/stores/servlet/ISALTMStockAvailability?storeId=10152&langId=111&partNumber_1=PRODUCT_ID&checkStock=true&backTo=product&storeSelection=STORE_ID&viewTaskName=ISALTMAjaxResponseView";
+	
+	private static final String URL_01_TEMPLATE = 
+			"http://www.argos.ie/webapp/wcs/stores/servlet/Search?storeId=10152&catalogId=14551&langId=111&searchTerms=PRODUCT_ID&authToken=%252d1002%252c8RvTgzRQUIkiaCQg1wd0wg264Io%253d";
+
+	private static final String IN_STOCK_KEY = "inStock";
+	
+	private static final String OUT_OF_STOCK_KEY = "outOfStock";
+	
+	private boolean _autoLaunchBrowser;
+	
+	private boolean _playInStockSound;
+
+	private Logger _logger = Logger.getLogger("ArgCheck");
+	
+    private FileHandler _fh;
+    
+    private Collection<Store> _storesToCheck;
+    
+    private Collection<Ps4> _ps4sToCheck;
+    
+    private String _logfilePath;
+    
+    private int _repeatCheckDelay;
+    
 	/**
 	 * @param args
 	 */
@@ -56,22 +75,10 @@ public class ArgCheck
 		ArgCheck ac = new ArgCheck();
 		ac.initialise();
 		ac.runIndefinitely();
-//		ac.playSound(StockStatus.IN_STOCK);
-//		try {
-//			Thread.sleep(5000);
-//		} catch (InterruptedException e) {
-//			// TODO Auto-generated catch block
-//			e.printStackTrace();
-//		}
-		//ReservationRobot rr = new ReservationRobot(""+1024353, Store.Cork_Queens, "feilimb");
-		//Timer t = new Timer();
-		//t.schedule(rr, 100);
 	}
 	
 	private void initialise() 
 	{
-		MAIN_TIMER = new Timer();
-		
 		Properties prop = new Properties();
 		try 
 		{
@@ -81,6 +88,47 @@ public class ArgCheck
 			// get the property values for pushover notifications if any
 			_pushoverAppToken = prop.getProperty("PUSHOVER_APP_TOKEN");
 			_pushoverUserToken = prop.getProperty("PUSHOVER_USER_TOKEN");
+			
+			String repeatCheckDelayStr = prop.getProperty("REPEAT_CHECK_DELAY", ""+6);
+			try 
+			{
+				_repeatCheckDelay = Integer.parseInt(repeatCheckDelayStr);
+			} 
+			catch (NumberFormatException e) 
+			{
+				System.err.println("Invalid value specified repeat check delay! See REPEAT_CHECK_DELAY in config.properties!");
+				System.exit(1);
+			}
+			
+			String storeIds = prop.getProperty("STORES");
+			String bundleIds = prop.getProperty("BUNDLES");
+			String autoLaunchBrowserStr = prop.getProperty("AUTO_LAUNCH_BROWSER", "FALSE");
+			String playInStockSoundStr = prop.getProperty("PLAY_IN_STOCK_SOUND", "TRUE");
+			
+			_logfilePath = prop.getProperty("LOG_FILE_PATH", "C:\\Temp");
+			File f = new File(_logfilePath);
+			if (!f.exists() || !f.isDirectory())
+			{
+				System.err.println("Invalid path specified for log file location! See LOG_FILE_PATH in config.properties!");
+				System.exit(1);
+			}
+			
+			_storesToCheck = parseStores(storeIds);
+			_ps4sToCheck = parsePS4s(bundleIds);
+			_autoLaunchBrowser = parseAutoLaunch(autoLaunchBrowserStr);
+			_playInStockSound = parsePlayInStockSound(playInStockSoundStr);
+			
+			if (_storesToCheck.isEmpty())
+			{
+				System.err.println("No valid stores were found in config.properties!");
+				System.exit(1);
+			}
+			
+			if (_ps4sToCheck.isEmpty())
+			{
+				System.err.println("No valid PS4 bundles were found in config.properties!");
+				System.exit(1);
+			}
 		} 
 		catch (IOException ex) 
 		{
@@ -92,9 +140,8 @@ public class ArgCheck
         try 
         {
         	SimpleDateFormat sim=new SimpleDateFormat("ddMMyyyy_HHmm");
-        	Date d = new Date();
-        	String s = sim.format(d);
-			_fh = new FileHandler("log/" + s + ".log");  
+        	String s = sim.format(new Date());
+			_fh = new FileHandler(_logfilePath + File.separator + s + ".log");  
 			_logger.addHandler(_fh);
 			SimpleFormatter formatter = new SimpleFormatter();  
 			_fh.setFormatter(formatter);
@@ -109,21 +156,89 @@ public class ArgCheck
 		}  
 	}
 	
+	private boolean parsePlayInStockSound(String playInStockSoundStr)
+	{
+		if (playInStockSoundStr == null)
+		{
+			return false;
+		}
+		return Boolean.valueOf(playInStockSoundStr);
+	}
+
+	private boolean parseAutoLaunch(String autoLaunchBrowserStr) 
+	{
+		if (autoLaunchBrowserStr == null)
+		{
+			return false;
+		}
+		return Boolean.valueOf(autoLaunchBrowserStr);
+	}
+
+	private Collection<Ps4> parsePS4s(String bundleIds) 
+	{
+		Set<Ps4> ps4s = new LinkedHashSet<Ps4>();
+		if (bundleIds == null)
+		{
+			System.err.println("No BUNDLES were specified in config.properties!");
+			System.exit(1);
+		}
+		
+		String[] ids = bundleIds.split(",");
+		for (String id : ids) 
+		{
+			int code = Integer.parseInt(id);
+			Ps4 p = Ps4.getFromCode(code);
+			if (p != null)
+			{
+				ps4s.add(p);
+			}
+		}
+		
+		return ps4s;
+	}
+
+	private Collection<Store> parseStores(String storeIds) 
+	{
+		Set<Store> stores = new LinkedHashSet<Store>();
+		if (storeIds == null)
+		{
+			System.err.println("No STORES were specified in config.properties!");
+			System.exit(1);
+		}
+		
+		String[] ids = storeIds.split(",");
+		for (String id : ids) 
+		{
+			int code = Integer.parseInt(id);
+			Store s = Store.getFromCode(code);
+			if (s != null)
+			{
+				stores.add(s);
+			}
+		}
+		
+		return stores;
+	}
+
 	private void runIndefinitely()
 	{
-		//_lock = 0;
-		_logger.info("AC :: Starting Stock Check...");
+		_logger.info("AC :: Starting Stock Checks...");
 		checkAllPS4s();
 	}
 	
 	private void checkAllPS4s()
 	{
-		//_lock = Ps4.values().length;
-		for (final Ps4 p : Ps4.values()) 
+		Map<Ps4, Timer> timersMap = new HashMap<Ps4, Timer>();
+		for (final Ps4 p : _ps4sToCheck)
 		{
-			TimerTask task = new StockCheckTask(p);
-			Timer t = new Timer();
-			t.schedule(task, 0, 8000);
+			timersMap.put(p, new Timer());
+		}
+		
+		for (final Ps4 p : _ps4sToCheck) 
+		{
+			StockCheckTask task = new StockCheckTask(p);
+			Timer t = timersMap.get(p);
+			t.schedule(task, 0, _repeatCheckDelay*1000);
 		}
 	}
 
@@ -140,18 +255,12 @@ public class ArgCheck
 		public void run() 
 		{
 			checkAllStores(_ps4);
-			//decrementLock();
 		}
 	}
 	
-//	private synchronized void decrementLock()
-//	{
-//		_lock--;
-//	}
-	
 	private void checkAllStores(Ps4 p)
 	{
-		for (Store s : Store.values())
+		for (Store s : _storesToCheck)
 		{
 			checkPS4Status(s, p);		
 		}
@@ -176,10 +285,12 @@ public class ArgCheck
 					if (cachedStatus == null || cachedStatus != StockStatus.IN_STOCK)
 					{
 						updateStatusMap(key, sw._status);
-						playSound(sw._status);
+						if (_playInStockSound)
+						{
+							playSound(sw._status);
+						}
 						sendNotification(s, ps4, sw);
-						if (AUTO_LAUNCH_BROWSER && 
-								(s==Store.Cork_Mahon||s==Store.Cork_Queens||s==Store.Cork_Retail))
+						if (_autoLaunchBrowser)
 						{
 							ReservationRobot.openBrowser(Integer.toString(ps4.getCode()), 0);
 						}
@@ -200,8 +311,9 @@ public class ArgCheck
 		}
 	}
 
-	private void playSound(StockStatus _status) {
-		if (_status == StockStatus.IN_STOCK)
+	private void playSound(StockStatus status) 
+	{
+		if (status == StockStatus.IN_STOCK)
 		{
 			playSound("tada.wav");
 		}
