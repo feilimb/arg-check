@@ -82,8 +82,7 @@ public class ArgCheck
 			prop.load(new FileInputStream("config.properties"));
 
 			// get the property values for pushover notifications if any
-			//_pushoverAppToken = prop.getProperty("PUSHOVER_APP_TOKEN");
-			_pushoverAppToken = "afDf8adppu37JVGb1CY7Nwy4oKNCSf";
+			_pushoverAppToken = prop.getProperty("PUSHOVER_APP_TOKEN");
 			_pushoverUserToken = prop.getProperty("PUSHOVER_USER_TOKEN");
 			
 			String repeatCheckDelayStr = prop.getProperty("REPEAT_CHECK_DELAY", ""+6);
