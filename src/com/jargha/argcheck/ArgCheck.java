@@ -1,4 +1,4 @@
-package com.feilim.argcheck;
+package com.jargha.argcheck;
 
 import java.io.BufferedReader;
 import java.io.File;

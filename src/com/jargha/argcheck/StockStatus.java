@@ -1,4 +1,4 @@
-package com.feilim.argcheck;
+package com.jargha.argcheck;
 
 public enum StockStatus 
 {

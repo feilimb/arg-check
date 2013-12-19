@@ -1,6 +1,6 @@
-package com.feilim.argcheck;
+package com.jargha.argcheck;
 
-import com.feilim.argcheck.StockStatus;
+import com.jargha.argcheck.StockStatus;
 
 public class StockWrapper 
 {

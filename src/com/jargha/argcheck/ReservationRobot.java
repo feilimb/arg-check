@@ -1,4 +1,4 @@
-package com.feilim.argcheck;
+package com.jargha.argcheck;
 
 import java.awt.AWTException;
 import java.awt.Desktop;
