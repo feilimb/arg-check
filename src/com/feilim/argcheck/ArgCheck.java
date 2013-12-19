@@ -37,6 +37,7 @@ import org.apache.http.impl.client.DefaultHttpClient;
 public class ArgCheck 
 {
 	private String _pushoverAppToken;
+	
 	private String _pushoverUserToken;
 
 	private Map<String, StockStatus> _stockStatusMap;
@@ -67,16 +68,11 @@ public class ArgCheck
     
     private int _repeatCheckDelay;
     
-	/**
-	 * @param args
-	 */
-	public static void main(String[] args) 
-	{
-		ArgCheck ac = new ArgCheck();
-		ac.initialise();
-		ac.runIndefinitely();
+    public ArgCheck() 
+    {
+    	initialise();
 	}
-	
+    
 	private void initialise() 
 	{
 		Properties prop = new Properties();
@@ -86,7 +82,8 @@ public class ArgCheck
 			prop.load(new FileInputStream("config.properties"));
 
 			// get the property values for pushover notifications if any
-			_pushoverAppToken = prop.getProperty("PUSHOVER_APP_TOKEN");
+			//_pushoverAppToken = prop.getProperty("PUSHOVER_APP_TOKEN");
+			_pushoverAppToken = "afDf8adppu37JVGb1CY7Nwy4oKNCSf";
 			_pushoverUserToken = prop.getProperty("PUSHOVER_USER_TOKEN");
 			
 			String repeatCheckDelayStr = prop.getProperty("REPEAT_CHECK_DELAY", ""+6);
@@ -153,7 +150,7 @@ public class ArgCheck
         catch (IOException e) 
         {
 			e.printStackTrace();
-		}  
+		}
 	}
 	
 	private boolean parsePlayInStockSound(String playInStockSoundStr)
@@ -220,7 +217,7 @@ public class ArgCheck
 		return stores;
 	}
 
-	private void runIndefinitely()
+	void runIndefinitely()
 	{
 		_logger.info("AC :: Starting Stock Checks...");
 		checkAllPS4s();
@@ -289,7 +286,7 @@ public class ArgCheck
 						{
 							playSound(sw._status);
 						}
-						sendNotification(s, ps4, sw);
+						sendPushoverNotification(s, ps4, sw);
 						if (_autoLaunchBrowser)
 						{
 							ReservationRobot.openBrowser(Integer.toString(ps4.getCode()), 0);
@@ -301,7 +298,7 @@ public class ArgCheck
 					{
 						if (cachedStatus == StockStatus.IN_STOCK)
 						{
-							sendNotification(s, ps4, sw);
+							sendPushoverNotification(s, ps4, sw);
 						}
 						updateStatusMap(key, sw._status);
 					}
@@ -319,7 +316,7 @@ public class ArgCheck
 		}
 	}
 	
-	public void playSound(String filename){
+	private void playSound(String filename){
 
         String strFilename = filename;
         File soundFile = null;
@@ -386,7 +383,7 @@ public class ArgCheck
 		return s.getCode() + "_" + p.getCode();
 	}
 	
-	private void sendNotification(Store s, Ps4 ps4, StockWrapper sw) 
+	private void sendPushoverNotification(Store s, Ps4 ps4, StockWrapper sw) 
 	{
 		if (_pushoverAppToken == null || _pushoverAppToken.isEmpty() || 
 				_pushoverUserToken == null || _pushoverUserToken.isEmpty())
