@@ -1,0 +1,1 @@
+java -cp "lib/*" com.jargha.argcheck.Launcher
